@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import ReservationTable from "./reservationTable/ReservationTable";
-import { listReservations, listTables } from "../utils/api";
+import { listReservations } from "../utils/api";
+import useQuery from "../utils/useQuery";
 import ErrorAlert from "../layout/ErrorAlert";
-import { useHistory } from "react-router-dom";
-import { previous, next } from "../utils/date-time";
-import TableList from "./TableList/TableList";
+import DashboardReservationsTable from "./DashboardReservationsTable";
+import DashboardTablesList from "./DashboardTablesList";
+import DashboardButtons from "./DashboardDateButtons";
 
 /**
  * Defines the dashboard page.
@@ -14,62 +14,40 @@ import TableList from "./TableList/TableList";
  */
 function Dashboard({ date }) {
   const [reservations, setReservations] = useState([]);
-  const [tables, setTables] = useState([]);
   const [reservationsError, setReservationsError] = useState(null);
-  const history = useHistory();
+  const [reservationsDate, setReservationsDate] = useState(date);
 
-  useEffect(loadDashboard, [date]);
+  const query = useQuery();
+  const queryDate = query.get("date");
 
-  function loadDashboard() {
+  useEffect(() => {
+    if (queryDate) {
+      setReservationsDate(queryDate);
+    }
+  }, [queryDate]);
+
+  useEffect(loadReservations, [reservationsDate]);
+
+  function loadReservations() {
     const abortController = new AbortController();
     setReservationsError(null);
-    listReservations({ date }, abortController.signal)
+    listReservations({ date: reservationsDate }, abortController.signal)
       .then(setReservations)
-      .then(listTables)
-      .then(setTables)
       .catch(setReservationsError);
     return () => abortController.abort();
   }
 
-  function handleToday() {
-    history.push(`/dashboard`);
-  }
-
-  function handlePrev() {
-    const newDate = previous(date);
-    history.push(`/dashboard?date=${newDate}`);
-  }
-
-  function handleNext() {
-    history.push(`/dashboard?date=${next(date)}`);
-  }
-
   return (
     <main>
-      <h1 className="d-md-flex justify-content-center">Dashboard</h1>
-      <div className="d-md-flex mb-3 justify-content-center">
-        <h4 className="mb-0">Reservations for {date}</h4>
-      </div>
-      <div className="pb-2 d-flex justify-content-center">
-        <button className="btn btn-primary mr-1" onClick={handleToday}>
-          today
-        </button>
-        <button className="btn btn-primary mr-1" onClick={handlePrev}>
-          previous
-        </button>
-        <button className="btn btn-primary" onClick={handleNext}>
-          next
-        </button>
-      </div>
+      <h1 class="mt-lg-4 mt-1 mb-3">Dashboard</h1>
+      <h4 class="mb-1">Reservations for Date: {reservationsDate}</h4>
+      <DashboardButtons reservationsDate={reservationsDate} />
       <ErrorAlert error={reservationsError} />
-      <ReservationTable
+      <DashboardReservationsTable
         reservations={reservations}
-        setReservations={setReservations}
-        setError={setReservationsError}
+        loadReservations={loadReservations}
       />
-      <div>
-        <TableList tables={tables} loadDashboard={loadDashboard} />
-      </div>
+      <DashboardTablesList loadReservations={loadReservations} />
     </main>
   );
 }
